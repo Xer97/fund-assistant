@@ -2,7 +2,7 @@
 """
 基金助手 API 封装脚本
 用法：
-    python fund_api.py query 001618,000001      # 查询基金实时估值
+    python fund_api.py query 001618,000001      # 查询基金实时估值（推荐）
     python fund_api.py search 白酒              # 搜索基金
     python fund_api.py detail 001618            # 基金详情
     python fund_api.py history 001618 y         # 历史净值 (y/3y/6y/n/3n/5n)
@@ -17,10 +17,13 @@ import sys
 import json
 import urllib.request
 import urllib.parse
+import re
 from datetime import datetime
 
 BASE_URL = "https://fundmobapi.eastmoney.com"
 PUSH_URL = "https://push2.eastmoney.com"
+# 天天基金实时估值接口（JSONP格式，更可靠）
+FUND_GZ_URL = "http://fundgz.1234567.com.cn/js"
 
 def fetch(url):
     """发起 HTTP 请求并返回 JSON"""
@@ -33,8 +36,24 @@ def fetch(url):
     except Exception as e:
         return {"error": str(e)}
 
+def fetch_jsonp(url):
+    """发起 HTTP 请求并解析 JSONP 响应"""
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; FundAssistant/1.0)'
+        })
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            content = resp.read().decode('utf-8')
+            # 解析 JSONP: jsonpgz({...});
+            match = re.search(r'jsonpgz\((.*)\);?', content)
+            if match:
+                return json.loads(match.group(1))
+            return {"error": "Invalid JSONP response"}
+    except Exception as e:
+        return {"error": str(e)}
+
 def query_funds(codes):
-    """查询基金实时估值（通过详情 API）"""
+    """查询基金实时估值（使用天天基金JSONP接口）"""
     code_list = codes.split(",")
     result = []
 
@@ -43,28 +62,22 @@ def query_funds(codes):
         if not code:
             continue
 
-        # 使用详情 API 获取基金信息
-        url = f"{BASE_URL}/FundMApi/FundBaseTypeInformation.ashx?FCODE={code}&deviceid=Wap&plat=Wap&product=EFund&version=2.0.0"
-        data = fetch(url)
+        # 使用天天基金实时估值接口
+        url = f"{FUND_GZ_URL}/{code}.js?rt={int(datetime.now().timestamp() * 1000)}"
+        data = fetch_jsonp(url)
 
         if "error" in data:
             result.append({"code": code, "error": data["error"]})
             continue
 
-        d = data.get("Datas", {})
-        if not d:
-            result.append({"code": code, "error": "未找到基金"})
-            continue
-
         fund = {
-            "code": d.get("FCODE"),
-            "name": d.get("SHORTNAME"),
-            "nav": float(d.get("DWJZ", 0)) if d.get("DWJZ") else None,
-            "nav_date": d.get("FSRQ"),
-            "change": float(d.get("RZDF", 0)) if d.get("RZDF") else 0,
-            "return_1m": d.get("SYL_Y"),
-            "return_3m": d.get("SYL_3Y"),
-            "return_1y": d.get("SYL_1N")
+            "code": data.get("fundcode"),
+            "name": data.get("name"),
+            "nav": float(data.get("dwjz", 0)) if data.get("dwjz") else None,
+            "nav_date": data.get("jzrq"),
+            "gsz": float(data.get("gsz", 0)) if data.get("gsz") else None,
+            "gszzl": float(data.get("gszzl", 0)) if data.get("gszzl") else 0,
+            "gztime": data.get("gztime")
         }
         result.append(fund)
 

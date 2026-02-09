@@ -52,12 +52,20 @@ python scripts/portfolio.py import portfolio.json  # 导入持仓
 ## 收益计算
 
 ```javascript
-// 当日收益：has_replace=true 时用 nav，否则用 gsz
-dailyGains = hasReplace ? (nav - nav / (1 + change * 0.01)) * shares : (gsz - nav) * shares;
+// 当日预估收益（盘中）
+dailyGains = (gsz - nav) * shares;
+// 当日预估收益率
+dailyGainsRate = gszzl;
 // 持仓收益
-costGains = (nav - cost) * shares;
-costGainsRate = ((nav - cost) / cost) * 100;
+costGains = (gsz - cost) * shares;
+costGainsRate = ((gsz - cost) / cost) * 100;
 ```
+
+**字段说明：**
+- `nav`: 昨日净值（已公布）
+- `gsz`: 估算净值（盘中实时）
+- `gszzl`: 估算涨跌幅（%）
+- `gztime`: 估值更新时间
 
 ## 操作流程
 
@@ -76,5 +84,6 @@ costGainsRate = ((nav - cost) / cost) * 100;
 ## 注意事项
 
 1. 首次使用需运行 `portfolio.py init` 初始化数据目录
-2. `has_replace=true` 表示净值已公布，使用 `nav` 而非 `gsz`
+2. 实时估值使用天天基金接口 `http://fundgz.1234567.com.cn/js/{code}.js`
 3. 交易时段：9:30-11:30, 13:00-15:00（排除节假日）
+4. QDII基金估值可能延迟，部分新发基金无估值数据
