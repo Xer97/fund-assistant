@@ -46,7 +46,14 @@ python scripts/portfolio.py list
 
 ### Data Storage
 
-Data is stored locally in `.fund-assistant/` directory:
+Data is stored in `.fund-assistant/` directory (relative to the script's parent directory by default).
+
+You can override the workspace path via environment variable:
+```bash
+export FUND_WORKSPACE=/path/to/workspace
+```
+
+Directory structure:
 ```
 .fund-assistant/
 ├── config.json           # Global config (current user)
@@ -126,7 +133,14 @@ python scripts/portfolio.py import data.json     # 导入
 
 ### 数据存储
 
-数据存储在本地 `.fund-assistant/` 目录：
+数据默认存储在脚本所在目录的上级 `.fund-assistant/` 目录。
+
+可通过环境变量 `FUND_WORKSPACE` 指定工作目录：
+```bash
+export FUND_WORKSPACE=/path/to/workspace
+```
+
+目录结构：
 ```
 .fund-assistant/
 ├── config.json           # 全局配置（当前用户）

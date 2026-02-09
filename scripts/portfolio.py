@@ -27,7 +27,13 @@ TRANSACTIONS_FILE = "transactions.json"
 
 def get_data_dir():
     """获取数据目录路径"""
-    return os.path.join(os.getcwd(), DATA_DIR)
+    # 优先使用环境变量指定的工作目录，否则使用脚本所在目录的上级
+    workspace = os.environ.get("FUND_WORKSPACE")
+    if workspace:
+        return os.path.join(workspace, DATA_DIR)
+    # 默认使用脚本所在目录的上级目录
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(os.path.dirname(script_dir), DATA_DIR)
 
 def get_config_path():
     """获取配置文件路径"""

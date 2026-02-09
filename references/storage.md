@@ -1,5 +1,15 @@
 # 数据存储结构
 
+## 数据目录位置
+
+默认位置：脚本所在目录的上级目录下的 `.fund-assistant/`
+
+可通过环境变量覆盖：
+```bash
+export FUND_WORKSPACE=/your/workspace
+# 数据将存储在 /your/workspace/.fund-assistant/
+```
+
 ## 目录结构
 
 ```
