@@ -19,6 +19,7 @@ import urllib.request
 import urllib.parse
 import re
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BASE_URL = "https://fundmobapi.eastmoney.com"
 PUSH_URL = "https://push2.eastmoney.com"
@@ -52,34 +53,52 @@ def fetch_jsonp(url):
     except Exception as e:
         return {"error": str(e)}
 
-def query_funds(codes):
-    """查询基金实时估值（使用天天基金JSONP接口）"""
-    code_list = codes.split(",")
+def _fetch_single_fund(code):
+    """查询单个基金（内部函数，供并发调用）"""
+    code = code.strip()
+    if not code:
+        return None
+
+    url = f"{FUND_GZ_URL}/{code}.js?rt={int(datetime.now().timestamp() * 1000)}"
+    data = fetch_jsonp(url)
+
+    if "error" in data:
+        return {"code": code, "error": data["error"]}
+
+    return {
+        "code": data.get("fundcode"),
+        "name": data.get("name"),
+        "nav": float(data.get("dwjz", 0)) if data.get("dwjz") else None,
+        "nav_date": data.get("jzrq"),
+        "gsz": float(data.get("gsz", 0)) if data.get("gsz") else None,
+        "gszzl": float(data.get("gszzl", 0)) if data.get("gszzl") else 0,
+        "gztime": data.get("gztime")
+    }
+
+def query_funds(codes, max_workers=5):
+    """查询基金实时估值（并发查询，使用天天基金JSONP接口）"""
+    code_list = [c.strip() for c in codes.split(",") if c.strip()]
+
+    if not code_list:
+        return {"funds": []}
+
+    # 单个基金不需要并发
+    if len(code_list) == 1:
+        fund = _fetch_single_fund(code_list[0])
+        return {"funds": [fund] if fund else []}
+
     result = []
+    # 使用线程池并发查询，限制最大并发数避免被封
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        future_to_code = {executor.submit(_fetch_single_fund, code): code for code in code_list}
+        for future in as_completed(future_to_code):
+            fund = future.result()
+            if fund:
+                result.append(fund)
 
-    for code in code_list:
-        code = code.strip()
-        if not code:
-            continue
-
-        # 使用天天基金实时估值接口
-        url = f"{FUND_GZ_URL}/{code}.js?rt={int(datetime.now().timestamp() * 1000)}"
-        data = fetch_jsonp(url)
-
-        if "error" in data:
-            result.append({"code": code, "error": data["error"]})
-            continue
-
-        fund = {
-            "code": data.get("fundcode"),
-            "name": data.get("name"),
-            "nav": float(data.get("dwjz", 0)) if data.get("dwjz") else None,
-            "nav_date": data.get("jzrq"),
-            "gsz": float(data.get("gsz", 0)) if data.get("gsz") else None,
-            "gszzl": float(data.get("gszzl", 0)) if data.get("gszzl") else 0,
-            "gztime": data.get("gztime")
-        }
-        result.append(fund)
+    # 按原始顺序排序（可选，保持输入顺序）
+    code_order = {code: i for i, code in enumerate(code_list)}
+    result.sort(key=lambda x: code_order.get(x.get("code", ""), 999))
 
     return {"funds": result}
 
