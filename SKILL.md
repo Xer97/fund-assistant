@@ -52,20 +52,25 @@ python scripts/portfolio.py import portfolio.json  # 导入持仓
 ## 收益计算
 
 ```javascript
-// 当日预估收益（盘中）
+// 当日预估收益（今天赚/亏多少）
 dailyGains = (gsz - nav) * shares;
-// 当日预估收益率
-dailyGainsRate = gszzl;
-// 持仓收益
+dailyGainsRate = gszzl;  // 直接用API返回的涨跌幅
+
+// 持仓总收益（从买入到现在总共赚/亏多少）
 costGains = (gsz - cost) * shares;
 costGainsRate = ((gsz - cost) / cost) * 100;
 ```
+
+**重要区分：**
+- **当日收益** = (估算净值 - 昨日净值) × 份额 → 今天赚了多少
+- **持仓收益** = (估算净值 - 成本价) × 份额 → 总共赚了多少
 
 **字段说明：**
 - `nav`: 昨日净值（已公布）
 - `gsz`: 估算净值（盘中实时）
 - `gszzl`: 估算涨跌幅（%）
 - `gztime`: 估值更新时间
+- `cost`: 用户买入成本价
 
 ## 操作流程
 
